@@ -14,6 +14,9 @@ class V2 {
   sub(that) {
     return new V2(this.x - that.x, this.y - that.y);
   }
+  length() {
+    return Math.sqrt(this.x * this.x + this.y * this.y);
+  }
 
 }
 
@@ -28,32 +31,36 @@ const directionMap = {
 };
 
 class TutorialPopup {
-  constructor() {
-    this.alpa = 0.0;
-    this.dalpa = 0.00;
+  constructor(text) {
+    this.alpha = 0.0;
+    this.dalpha = 0.00;
+    this.text = text;
   }
 
   update(dt) {
-    // this.alpha += dt;
-    // if (this.alpha > 1.0) {
-    //   this.alpha = 1.0;
-    // }
+    this.alpha += this.dalpha * dt;
+    if (this.dalpha < 0.0 && this.alpha <= 0.0) {
+      this.dalpha = 0.0;
+      this.alpha = 0.0;
+    }else if (this.dalpha <= 0.0 && this.alpha >= 1.0) {
+      this.dalpha = 0.0;
+      this.alpha = 1.0;
+    }
+
   }
   render(ctx) {
-    // const width = window.innerWidth;
-    // const height = window.innerHeight;
-    // ctx.fillStyle = `rgba(0,0,0,${this.alpa})`;
-    // ctx.fillRect(0, 0, width, height);
-    // ctx.fillStyle = "white";
-    // ctx.font = "30px ComicNeue-Regular";
-    // ctx.textAlign = "center";
+    const width = ctx.canvas.width;
+    const height = ctx.canvas.height;
+    // ctx.fillStyle = "#4feb34";
+    ctx.fillStyle = `rgba(255,255,255,${this.alpha})`;
+    ctx.font = "40px ComicNeue-Regular";
+    ctx.textAlign = "center";
+    ctx.fillText(this.text, width / 2, height / 2);
   }
   fadeIn() {
-    this.alpha = 1.0;
-    this.dalpha = 0.01;
+    this.dalpha = 1.0;
   }
   fadeOut() {
-    this.alpha = 1.0;
     this.dalpha = -1.0;
   }
 }
@@ -62,7 +69,9 @@ class Game {
   constructor() {
     this.pos = new V2(radius + 10, radius + 10);
     this.pressedKeys = new Set();
-    this.popup = new TutorialPopup();
+    this.popup = new TutorialPopup("Movement: [w,a, s, d]");
+    this.popup.fadeIn();
+    this.player_learnet_movement = false;
   }
 
   update(dt) {
@@ -72,6 +81,12 @@ class Game {
         vel = vel.add(directionMap[key].scale(speed));
       }
     }
+
+    if (!this.player_learned_movement && vel.length() > 0.0) {
+      this.player_learnet_movement = true;
+      this.popup.fadeOut();
+    }
+
     this.pos = this.pos.add(vel.scale(dt));
 
     this.popup.update(dt);
@@ -86,9 +101,6 @@ class Game {
 
     this.popup.render(ctx);
 
-    ctx.fillStyle = "#4feb34";
-    ctx.font = "40px ComicNeue-Regular";
-    ctx.fillText("Movment: [w,a, s, d]", 100, 100);
 
   }
 
@@ -120,7 +132,7 @@ function fillCircle(ctx, center, radius, color = "green") {
   const game = new Game();
 
   let start;
-
+  let moved_for_the_first_time = false; // <== Here: 2:5
   function step(timestamp) {
     // console.log(timestamp);
     // console.log(start)
