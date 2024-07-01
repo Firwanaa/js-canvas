@@ -14,13 +14,17 @@ class V2 {
   sub(that) {
     return new V2(this.x - that.x, this.y - that.y);
   }
-  length() {
+  len() {
     return Math.sqrt(this.x * this.x + this.y * this.y);
   }
 
   normalize() {
-    const n = this.length();
+    const n = this.len();
     return new V2(this.x / n, this.y / n);
+  }
+
+  distance(that) {
+    return this.sub(that).len();
   }
 
 }
@@ -31,7 +35,11 @@ const BULLET_SPEED = 2000;
 const BULLET_RADIUS = 20;
 const BULLET_LIFETIME = 5.0;
 const TUTORIAL_POPUP_SPEED = 0.5;
-const PLAYER_RED = "#f43841";
+const PLAYER_COLOR = "#f43841";
+const ENEMY_SPEED = PLAY_SPEED / 3.0;
+const ENEMY_COLOR = "#9e95c7";
+const ENEMY_RADIUS = PALYER_RADIUS / 2.0;
+
 
 const directionMap = {
   'w': new V2(0, -1.0),
@@ -133,6 +141,24 @@ class Tutorial {
   }
 
 }
+
+class Enemy {
+  constructor(pos) {
+    this.pos = pos;
+    this.dead = false;
+  }
+  update(dt, followPos) {
+    let vel =followPos
+      .sub(this.pos)
+      .normalize()
+      .scale(ENEMY_SPEED * dt);
+    this.pos = this.pos.add(vel);
+  }
+  render(ctx) {
+    fillCircle(ctx, this.pos, ENEMY_RADIUS, ENEMY_COLOR);
+  }
+}
+
 class Bullet {
   constructor(pos, vel) {
     this.pos = pos;
@@ -145,7 +171,7 @@ class Bullet {
     this.lifetime -= dt;
   }
   render(ctx) {
-    fillCircle(ctx, this.pos, BULLET_RADIUS, PLAYER_RED);
+    fillCircle(ctx, this.pos, BULLET_RADIUS, PLAYER_COLOR);
   }
 }
 
@@ -157,6 +183,11 @@ class Game {
     this.tutorial = new Tutorial();
     this.playerLearntMovement = false;
     this.bullets = new Set();
+    this.enemies = new Set();
+
+    this.enemies.add(new Enemy(new V2(300, 300)));
+    this.enemies.add(new Enemy(new V2(400, 300)));
+    this.enemies.add(new Enemy(new V2(500, 300)));
   }
 
   update(dt) {
@@ -178,9 +209,24 @@ class Game {
     this.tutorial.update(dt);
 
     for (let bullet of this.bullets) {
+      for (let enemy of this.enemies) {
+        if (bullet.pos.distance(enemy.pos) < BULLET_RADIUS + ENEMY_RADIUS) {
+          enemy.dead = true;
+          bullet.lifetime = 0.0;
+        }
+      }
+    }
+    for (let bullet of this.bullets) {
       bullet.update(dt);
     }
     this.bullets = new Set([...this.bullets].filter(bullet => bullet.lifetime > 0.0));
+
+    for (let enemy of this.enemies) {
+      enemy.update(dt, this.playerPos);
+    }
+    this.enemies = new Set([...this.enemies].filter(enemy => !enemy.dead));
+
+
 
   }
   render(ctx) {
@@ -188,10 +234,13 @@ class Game {
     const height = ctx.canvas.height;
 
     ctx.clearRect(0, 0, width, height);
-    fillCircle(ctx, this.playerPos, PALYER_RADIUS, PLAYER_RED);
+    fillCircle(ctx, this.playerPos, PALYER_RADIUS, PLAYER_COLOR);
 
     for (let bullet of this.bullets) {
       bullet.render(ctx);
+    }
+    for (let enemy of this.enemies) {
+      enemy.render(ctx);
     }
 
     this.tutorial.render(ctx);
@@ -221,7 +270,7 @@ class Game {
   }
 }
 
-function fillCircle(ctx, center, radius, color = PLAYER_RED) {
+function fillCircle(ctx, center, radius, color = PLAYER_COLOR) {
   ctx.beginPath();
   ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI, false);
   ctx.fillStyle = color;
