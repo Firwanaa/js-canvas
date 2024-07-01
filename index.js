@@ -1,4 +1,3 @@
-
 class V2 {
   constructor(x, y) {
     this.x = x;
@@ -17,6 +16,90 @@ class V2 {
   }
 
 }
+
+const radius = 50;
+const speed = 1000;
+
+const directionMap = {
+  'w': new V2(0, -1.0),
+  's': new V2(0, 1.0),
+  'a': new V2(-1.0, 0),
+  'd': new V2(1.0, 0),
+};
+
+class TutorialPopup {
+  constructor() {
+    this.alpa = 0.0;
+    this.dalpa = 0.00;
+  }
+
+  update(dt) {
+    // this.alpha += dt;
+    // if (this.alpha > 1.0) {
+    //   this.alpha = 1.0;
+    // }
+  }
+  render(ctx) {
+    // const width = window.innerWidth;
+    // const height = window.innerHeight;
+    // ctx.fillStyle = `rgba(0,0,0,${this.alpa})`;
+    // ctx.fillRect(0, 0, width, height);
+    // ctx.fillStyle = "white";
+    // ctx.font = "30px ComicNeue-Regular";
+    // ctx.textAlign = "center";
+  }
+  fadeIn() {
+    this.alpha = 1.0;
+    this.dalpha = 0.01;
+  }
+  fadeOut() {
+    this.alpha = 1.0;
+    this.dalpha = -1.0;
+  }
+}
+
+class Game {
+  constructor() {
+    this.pos = new V2(radius + 10, radius + 10);
+    this.pressedKeys = new Set();
+    this.popup = new TutorialPopup();
+  }
+
+  update(dt) {
+    let vel = new V2(0, 0);
+    for (let key of this.pressedKeys) {
+      if (key in directionMap) {
+        vel = vel.add(directionMap[key].scale(speed));
+      }
+    }
+    this.pos = this.pos.add(vel.scale(dt));
+
+    this.popup.update(dt);
+  }
+  render(ctx) {
+    const width = ctx.canvas.width;
+    const height = ctx.canvas.height;
+
+    ctx.clearRect(0, 0, width, height);
+    fillCircle(ctx, this.pos, radius, "red");
+
+
+    this.popup.render(ctx);
+
+    ctx.fillStyle = "#4feb34";
+    ctx.font = "40px ComicNeue-Regular";
+    ctx.fillText("Movment: [w,a, s, d]", 100, 100);
+
+  }
+
+  keyDown(e) {
+    this.pressedKeys.add((e.key).toLowerCase());
+  }
+  keyUp(e) {
+    this.pressedKeys.delete((e.key).toLowerCase());
+  }
+}
+
 function fillCircle(ctx, center, radius, color = "green") {
   ctx.beginPath();
   ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI, false);
@@ -32,21 +115,11 @@ function fillCircle(ctx, center, radius, color = "green") {
 
 
 
-  const radius = 69;
   const ctx = c.getContext("2d");
-  const speed = 1000;
+
+  const game = new Game();
 
   let start;
-  let pos = new V2(radius + 10, radius + 10);
-  
-  let directionMap = {
-    'w': new V2(0, -speed),
-    's': new V2(0, speed),
-    'a': new V2(-speed, 0),
-    'd': new V2(speed, 0),
-  };
-
-let pressedKeys = new Set();
 
   function step(timestamp) {
     // console.log(timestamp);
@@ -60,16 +133,10 @@ let pressedKeys = new Set();
     c.width = width;
     c.height = height;
 
-    let vel = new V2(0, 0);
-    for (let key of pressedKeys) {
-      if (key in directionMap) {
-        vel = vel.add(directionMap[key]);
-      }
-    }
-    pos = pos.add(vel.scale(dt));
+    game.update(dt);
+    game.render(ctx);
 
-    ctx.clearRect(0, 0, width, height);
-    fillCircle(ctx, pos, radius, "red");
+
     // console.log(elapsed);
 
     requestAnimationFrame(step);
@@ -77,11 +144,11 @@ let pressedKeys = new Set();
   requestAnimationFrame(step);
 
   document.addEventListener("keydown", (e) => {
-    pressedKeys.add((e.key).toLowerCase());
+    game.keyDown(e);
   })
 
   document.addEventListener("keyup", (e) => {
-    pressedKeys.delete((e.key).toLowerCase());
+    game.keyUp(e);
   })
 
 })();
