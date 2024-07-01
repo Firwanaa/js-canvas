@@ -25,12 +25,13 @@ class V2 {
 
 }
 
-const radius = 50;
-const speed = 1000;
+const PALYER_RADIUS = 50;
+const PLAY_SPEED = 1000;
 const BULLET_SPEED = 2000;
 const BULLET_RADIUS = 20;
 const BULLET_LIFETIME = 5.0;
 const TUTORIAL_POPUP_SPEED = 0.5;
+const PLAYER_RED = "#f43841";
 
 const directionMap = {
   'w': new V2(0, -1.0),
@@ -83,7 +84,6 @@ class TutorialPopup {
   }
   fadeOut() {
     this.dalpha = -TUTORIAL_POPUP_SPEED;
-    console.log(this.dalpha);
   }
 }
 
@@ -145,13 +145,13 @@ class Bullet {
     this.lifetime -= dt;
   }
   render(ctx) {
-    fillCircle(ctx, this.pos, BULLET_RADIUS, "green");
+    fillCircle(ctx, this.pos, BULLET_RADIUS, PLAYER_RED);
   }
 }
 
 class Game {
   constructor() {
-    this.playerPos = new V2(radius + 10, radius + 10);
+    this.playerPos = new V2(PALYER_RADIUS + 10, PALYER_RADIUS + 10);
     this.mousePos = new V2(0, 0)
     this.pressedKeys = new Set();
     this.tutorial = new Tutorial();
@@ -164,7 +164,7 @@ class Game {
     let moved = false;
     for (let key of this.pressedKeys) {
       if (key in directionMap) {
-        vel = vel.add(directionMap[key].scale(speed));
+        vel = vel.add(directionMap[key].scale(PLAY_SPEED));
         moved = true;
       }
     }
@@ -188,7 +188,7 @@ class Game {
     const height = ctx.canvas.height;
 
     ctx.clearRect(0, 0, width, height);
-    fillCircle(ctx, this.playerPos, radius, "red");
+    fillCircle(ctx, this.playerPos, PALYER_RADIUS, PLAYER_RED);
 
     for (let bullet of this.bullets) {
       bullet.render(ctx);
@@ -221,7 +221,7 @@ class Game {
   }
 }
 
-function fillCircle(ctx, center, radius, color = "green") {
+function fillCircle(ctx, center, radius, color = PLAYER_RED) {
   ctx.beginPath();
   ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI, false);
   ctx.fillStyle = color;
