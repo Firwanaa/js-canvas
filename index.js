@@ -18,10 +18,17 @@ class V2 {
     return Math.sqrt(this.x * this.x + this.y * this.y);
   }
 
+  normalize() {
+    const n = this.length();
+    return new V2(this.x / n, this.y / n);
+  }
+
 }
 
 const radius = 50;
 const speed = 1000;
+const BULLET_SPEED = 2000;
+const BULLET_RADIUS = 20;
 
 const directionMap = {
   'w': new V2(0, -1.0),
@@ -42,7 +49,7 @@ class TutorialPopup {
     if (this.dalpha < 0.0 && this.alpha <= 0.0) {
       this.dalpha = 0.0;
       this.alpha = 0.0;
-    }else if (this.dalpha <= 0.0 && this.alpha >= 1.0) {
+    } else if (this.dalpha <= 0.0 && this.alpha >= 1.0) {
       this.dalpha = 0.0;
       this.alpha = 1.0;
     }
@@ -65,13 +72,30 @@ class TutorialPopup {
   }
 }
 
+class Bullet {
+  constructor(pos, vel) {
+    this.pos = pos;
+    this.vel = vel;
+    console.log(this);
+  }
+
+  update(dt) {
+    this.pos = this.pos.add(this.vel.scale(dt));
+  }
+  render(ctx) {
+    fillCircle(ctx, this.pos, BULLET_RADIUS, "green");
+  }
+}
+
 class Game {
   constructor() {
-    this.pos = new V2(radius + 10, radius + 10);
+    this.playerPos = new V2(radius + 10, radius + 10);
+    this.mousePos = new V2(0, 0)
     this.pressedKeys = new Set();
     this.popup = new TutorialPopup("Movement: [w,a, s, d]");
     this.popup.fadeIn();
-    this.player_learnet_movement = false;
+    this.playerLearntMovement = false;
+    this.bullets = new Set();
   }
 
   update(dt) {
@@ -82,22 +106,31 @@ class Game {
       }
     }
 
-    if (!this.player_learned_movement && vel.length() > 0.0) {
-      this.player_learnet_movement = true;
+    if (!this.playerLearntMovement && vel.length() > 0.0) {
+      this.playerLearntMovement = true;
       this.popup.fadeOut();
     }
 
-    this.pos = this.pos.add(vel.scale(dt));
+    this.playerPos = this.playerPos.add(vel.scale(dt));
 
     this.popup.update(dt);
+
+    for (let bullet of this.bullets) {
+      bullet.update(dt);
+    }
+    // this.bullets = new Set([...this.bullets].filter(bullet => bullet.pos.length() < radius * 2));
+
   }
   render(ctx) {
     const width = ctx.canvas.width;
     const height = ctx.canvas.height;
 
     ctx.clearRect(0, 0, width, height);
-    fillCircle(ctx, this.pos, radius, "red");
+    fillCircle(ctx, this.playerPos, radius, "red");
 
+    for (let bullet of this.bullets) {
+      bullet.render(ctx);
+    }
 
     this.popup.render(ctx);
 
@@ -109,6 +142,19 @@ class Game {
   }
   keyUp(e) {
     this.pressedKeys.delete((e.key).toLowerCase());
+  }
+  mouseMove(e) {
+  }
+
+  mouseDown(e) {
+    const mousePos = new V2(e.clientX, e.clientY);
+    const bulletVel = mousePos
+      .sub(this.playerPos)
+      .normalize()
+      .scale(BULLET_SPEED);
+
+    // new Bullet(this.playerPos, bulletVel);
+    this.bullets.add(new Bullet(this.playerPos, bulletVel));
   }
 }
 
@@ -161,6 +207,13 @@ function fillCircle(ctx, center, radius, color = "green") {
 
   document.addEventListener("keyup", (e) => {
     game.keyUp(e);
+  })
+
+  document.addEventListener('mousemove', (e) => {
+    game.mouseMove(e);
+  })
+  document.addEventListener('mousedown', (e) => {
+    game.mouseDown(e);
   })
 
 })();
