@@ -29,6 +29,7 @@ const radius = 50;
 const speed = 1000;
 const BULLET_SPEED = 2000;
 const BULLET_RADIUS = 20;
+const BULLET_LIFETIME = 2.0;
 
 const directionMap = {
   'w': new V2(0, -1.0),
@@ -76,11 +77,12 @@ class Bullet {
   constructor(pos, vel) {
     this.pos = pos;
     this.vel = vel;
-    console.log(this);
+    this.lifetime = BULLET_LIFETIME;
   }
 
   update(dt) {
     this.pos = this.pos.add(this.vel.scale(dt));
+    this.lifetime -= dt;
   }
   render(ctx) {
     fillCircle(ctx, this.pos, BULLET_RADIUS, "green");
@@ -118,7 +120,7 @@ class Game {
     for (let bullet of this.bullets) {
       bullet.update(dt);
     }
-    // this.bullets = new Set([...this.bullets].filter(bullet => bullet.pos.length() < radius * 2));
+    this.bullets = new Set([...this.bullets].filter(bullet => bullet.lifetime > 0.0));
 
   }
   render(ctx) {
@@ -147,7 +149,7 @@ class Game {
   }
 
   mouseDown(e) {
-    const mousePos = new V2(e.clientX, e.clientY);
+    const mousePos = new V2(e.offsetX, e.offsetY); // also clientX and clientY
     const bulletVel = mousePos
       .sub(this.playerPos)
       .normalize()
@@ -170,15 +172,11 @@ function fillCircle(ctx, center, radius, color = "green") {
   // const pft = document.getElementById("pft");
   // var pft = new Audio('pft.wav');
   const c = document.getElementById("game");
-
-
-
   const ctx = c.getContext("2d");
-
   const game = new Game();
 
   let start;
-  let moved_for_the_first_time = false; // <== Here: 2:5
+  let moved_for_the_first_time = false;
   function step(timestamp) {
     // console.log(timestamp);
     // console.log(start)
