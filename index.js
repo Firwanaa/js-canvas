@@ -29,6 +29,11 @@ class V2 {
 
 }
 
+function polarVec(mag, dir) {
+  return new V2(Math.cos(dir) * mag, Math.sin(dir) * mag);
+}
+
+const LOCAL_STORAGE_TUTORIAL = "tutorial";
 const PALYER_RADIUS = 50;
 const PLAY_SPEED = 1000;
 const BULLET_SPEED = 2000;
@@ -38,7 +43,14 @@ const TUTORIAL_POPUP_SPEED = 0.5;
 const PLAYER_COLOR = "#f43841";
 const ENEMY_SPEED = PLAY_SPEED / 3.0;
 const ENEMY_COLOR = "#9e95c7";
-const ENEMY_RADIUS = PALYER_RADIUS / 2.0;
+const ENEMY_RADIUS = PALYER_RADIUS;
+const ENEMY_SPAWN_COOLDOWN = 1.0;
+const ENEMY_SPAWN_DISTANCE = 1000.0;
+const PARTICLE_RADIUS = 10.0;
+const PARTICLE_COLOR = ENEMY_COLOR;
+const PARTICLE_COUNT = 20;
+const PARTICLE_MAG = BULLET_SPEED;
+const PARTICLE_LIFETIME = 1.0;
 
 
 const directionMap = {
@@ -106,7 +118,6 @@ const TutorialMessages = [
   "Shoot: [Left Mouse Click]",
   ""
 ];
-const LOCAL_STORAGE_TUTORIAL = "tutorial";
 class Tutorial {
   constructor() {
     this.state = 0;
@@ -141,6 +152,38 @@ class Tutorial {
   }
 
 }
+function random_rgba() {
+    var o = Math.round, r = Math.random, s = 255;
+    return 'rgba(' + o(r()*s) + ',' + o(r()*s) + ',' + o(r()*s) + ',' + r().toFixed(1) + ')';
+}
+
+class Particle {
+  constructor(pos, vel, lifetime, radius) {
+    this.pos = pos;
+    this.vel = vel;
+    this.lifetime = lifetime;
+    this.radius = radius;
+  }
+  update(dt) {
+    this.pos = this.pos.add(this.vel.scale(dt));
+    this.lifetime -= dt;
+  }
+  render(ctx) {
+    const a = this.lifetime / PARTICLE_LIFETIME;
+    fillCircle(ctx, this.pos, this.radius, random_rgba());
+  }
+}
+
+function particleBurst(particles, center) {
+  const N = Math.random() * PARTICLE_COUNT;
+  for (let i = 0; i < N; ++i) {
+    particles.add(new Particle(
+      center,
+      polarVec(Math.random() * PARTICLE_MAG, Math.random() * 2 * Math.PI),
+      Math.random() * PARTICLE_LIFETIME,
+      Math.random() * PARTICLE_RADIUS + 4));
+  }
+}
 
 class Enemy {
   constructor(pos) {
@@ -148,7 +191,7 @@ class Enemy {
     this.dead = false;
   }
   update(dt, followPos) {
-    let vel =followPos
+    let vel = followPos
       .sub(this.pos)
       .normalize()
       .scale(ENEMY_SPEED * dt);
@@ -175,6 +218,12 @@ class Bullet {
   }
 }
 
+function renderEntities(ctx, entities) {
+  for (let entity of entities) {
+    entity.render(ctx);
+  }
+}
+
 class Game {
   constructor() {
     this.playerPos = new V2(PALYER_RADIUS + 10, PALYER_RADIUS + 10);
@@ -184,10 +233,11 @@ class Game {
     this.playerLearntMovement = false;
     this.bullets = new Set();
     this.enemies = new Set();
+    this.particles = new Set();
+    this.enemySpawnRate = ENEMY_SPAWN_COOLDOWN;
+    this.enemySpawnCooldown = ENEMY_SPAWN_COOLDOWN;
 
-    this.enemies.add(new Enemy(new V2(300, 300)));
-    this.enemies.add(new Enemy(new V2(400, 300)));
-    this.enemies.add(new Enemy(new V2(500, 300)));
+    // this.enemies.add(new Enemy(new V2(300, 300)));
   }
 
   update(dt) {
@@ -208,11 +258,13 @@ class Game {
 
     this.tutorial.update(dt);
 
-    for (let bullet of this.bullets) {
-      for (let enemy of this.enemies) {
-        if (bullet.pos.distance(enemy.pos) < BULLET_RADIUS + ENEMY_RADIUS) {
+    for (let enemy of this.enemies) {
+      for (let bullet of this.bullets) {
+        if (!enemy.dead && enemy.pos.distance(bullet.pos) <= BULLET_RADIUS + ENEMY_RADIUS) {
           enemy.dead = true;
           bullet.lifetime = 0.0;
+          console.log(this.particles);
+          particleBurst(this.particles, enemy.pos);
         }
       }
     }
@@ -221,10 +273,24 @@ class Game {
     }
     this.bullets = new Set([...this.bullets].filter(bullet => bullet.lifetime > 0.0));
 
+    for (let particle of this.particles) {
+      particle.update(dt);
+    }
+    this.particles = new Set([...this.particles].filter(particle => particle.lifetime > 0.0));
+
     for (let enemy of this.enemies) {
       enemy.update(dt, this.playerPos);
     }
     this.enemies = new Set([...this.enemies].filter(enemy => !enemy.dead));
+
+    if (this.tutorial.state == TutorialState.Finished) {
+      this.enemySpawnCooldown -= dt;
+     if (this.enemySpawnCooldown <= 0.0) {
+       this.spawnEnemy();
+       this.enemySpawnCooldown = this.enemySpawnRate;
+      this.enemySpawnRate = Math.max(0.0, this.enemySpawnRate - 0.1);
+     }
+    }
 
 
 
@@ -235,17 +301,19 @@ class Game {
 
     ctx.clearRect(0, 0, width, height);
     fillCircle(ctx, this.playerPos, PALYER_RADIUS, PLAYER_COLOR);
-
-    for (let bullet of this.bullets) {
-      bullet.render(ctx);
-    }
-    for (let enemy of this.enemies) {
-      enemy.render(ctx);
-    }
+  
+    renderEntities(ctx, this.bullets);
+    renderEntities(ctx, this.particles);
+    renderEntities(ctx, this.enemies);
 
     this.tutorial.render(ctx);
 
 
+  }
+
+  spawnEnemy() {
+    let dir = Math.random() * 2 * Math.PI;
+    this.enemies.add(new Enemy(this.playerPos.add(polarVec(ENEMY_SPAWN_DISTANCE, dir))));
   }
 
   keyDown(e) {
